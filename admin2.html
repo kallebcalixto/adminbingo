@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>PAINEL ADMIN - KBS TV COLOMBO</title>
+    <style>
+        /* CSS ORIGINAL MANTIDO */
+        body { background: #111; color: #fff; text-align: center; font-family: sans-serif; padding: 20px; }
+        button { padding: 15px; width: 320px; margin: 10px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; color: #fff; text-transform: uppercase; transition: 0.3s; }
+        #btn-auto { background: #f39c12; border: 3px solid #e67e22; font-size: 16px; width: 220px; }
+        #status-auto { color: #f1c40f; font-weight: bold; margin-top: 5px; display: none; }
+        #winner-alert { background: #d35400; padding: 20px; border: 2px solid white; display: none; margin-bottom: 20px; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        .config-card { background: #1a1a1a; border: 1px solid #333; padding: 15px; border-radius: 8px; width: 320px; margin: 10px auto; display: inline-block; vertical-align: top; text-align: left; }
+        .config-card input, .config-card select { width: 100%; padding: 10px; margin: 8px 0; background: #000; border: 1px solid #444; color: #fff; border-radius: 5px; box-sizing: border-box; }
+        label { font-size: 12px; color: #aaa; font-weight: bold; }
+        .rodada-box { display: inline-block; vertical-align: middle; background: #222; padding: 10px; border-radius: 8px; border: 1px solid #444; margin-left: 10px; }
+
+        /* ESTILOS DA TELA DE LOGIN */
+        #login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #000; display: flex; align-items: center; justify-content: center; 
+            z-index: 9999;
+        }
+        .login-box { background: #1a1a1a; padding: 30px; border-radius: 10px; border: 2px solid #f39c12; }
+        .login-box input { 
+            display: block; width: 250px; padding: 12px; margin-bottom: 15px; 
+            background: #000; border: 1px solid #444; color: #fff; text-align: center; border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2 style="color: #f39c12;">ACESSO RESTRITO</h2>
+            <input type="password" id="pass-input" placeholder="Digite a Senha">
+            <button onclick="verificarSenha()" style="background: #27ae60; width: 250px;">ENTRAR</button>
+            <p id="error-msg" style="color: #e74c3c; display: none; font-size: 14px;">Senha Incorreta!</p>
+        </div>
+    </div>
+
+    <div id="admin-content" style="display: none;">
+        <h1>SISTEMA DE CONTROLE - KBS TV</h1>
+        
+        <div id="winner-alert">
+            <h2 style="margin:0">🚨 BINGO DETETADO! 🚨</h2>
+            <p id="winner-display" style="font-size:24px; font-weight:bold"></p>
+            <button id="btn-clear-winner" style="background:#fff; color:#000; width:200px">FECHAR AVISO</button>
+        </div>
+
+        <div style="display: block; margin-bottom: 20px;">
+            <button id="btn-auto">▶ INICIAR RODADA AUTOMÁTICA</button>
+            <div class="rodada-box">
+                <label>RODADA ATIVA:</label>
+                <select id="select-rodada" style="width: 100px; padding: 5px; background: #000; color: #fff;" onchange="mudarRodada(this.value)">
+                    <option value="1">1ª</option><option value="2">2ª</option><option value="3">3ª</option><option value="4">4ª</option>
+                </select>
+            </div>
+            <div id="status-auto">SORTEIO EM ANDAMENTO...</div>
+        </div>
+
+        <div class="config-card">
+            <h3 style="color: #f39c12; text-align: center;">BANNER E PRÊMIO</h3>
+            <label>Texto do Prêmio:</label><input type="text" id="texto_premio">
+            <label>Link da Imagem:</label><input type="text" id="url_imagem">
+            <button id="btn-save-banner" style="width: 100%; background: #d35400;">SALVAR BANNER</button>
+        </div>
+
+        <div class="config-card">
+            <h3 style="color: #00d4ff; text-align: center;">REGRAS</h3>
+            <label>Máximo de Cartelas:</label><input type="number" id="max_cartelas">
+            <label>Dar por Pedido:</label>
+            <select id="qtd_por_pedido"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+            <button id="btn-save-rules" style="width: 100%; background: #27ae60;">SALVAR REGRAS</button>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button id="btn-draw" style="background:#27ae60;">SORTEAR BOLA MANUAL</button><br>
+            <button id="btn-release" style="background:#c0392b;">PEDIDOS DE CARTELA: OFF</button><br>
+            <button id="btn-lock-logout" style="background:#8e44ad;">SAÍDA DE USUÁRIOS: TRAVADA</button><br>
+            <button id="btn-clear" style="background:#2980b9;">ZERAR CARTELAS DE TODOS</button><br>
+            <button id="btn-reset-bolas" style="background:#7f8c8d;">LIMPAR APENAS BOLAS</button><br>
+            <button id="btn-reset-chat" style="background:#444;">LIMPAR APENAS CHAT</button>
+        </div>
+    </div>
+
+    <script>
+        // Lógica de Login Simples
+        function verificarSenha() {
+            const senhaCorreta = "Sa200783";
+            const input = document.getElementById('pass-input').value;
+            const erro = document.getElementById('error-msg');
+
+            if (input === senhaCorreta) {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('admin-content').style.display = 'block';
+                // Salva na sessão para não pedir senha a cada F5 (opcional)
+                sessionStorage.setItem('admin_logado', 'true');
+            } else {
+                erro.style.display = 'block';
+                document.getElementById('pass-input').value = "";
+            }
+        }
+
+        // Verifica se já estava logado nesta sessão
+        if(sessionStorage.getItem('admin_logado') === 'true') {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('admin-content').style.display = 'block';
+        }
+
+        // Permite dar Enter para logar
+        document.getElementById('pass-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') verificarSenha();
+        });
+    </script>
+
+    <script type="module">
+        // TODA A SUA LÓGICA DO FIREBASE FOI MANTIDA ABAIXO
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, get, update, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBibz0_TOrp1iX49sWRiddiGG8d4yVr7yo", 
+            databaseURL: "https://sorteio-c1552-default-rtdb.firebaseio.com", 
+            projectId: "sorteio-c1552" 
+        };
+        
+        const app = initializeApp(firebaseConfig); 
+        const db = getDatabase(app);
+        let ganhadorNoBanco = null, intervaloAuto = null;
+
+        window.mudarRodada = (val) => { set(ref(db, 'jogo/config/rodada_ativa'), parseInt(val)); };
+        document.getElementById('btn-save-banner').onclick = async () => { update(ref(db, 'jogo/config'), { texto_premio: document.getElementById('texto_premio').value, url_imagem: document.getElementById('url_imagem').value }); alert("Banner atualizado!"); };
+        document.getElementById('btn-save-rules').onclick = async () => { update(ref(db, 'jogo/config'), { max_cartelas: parseInt(document.getElementById('max_cartelas').value), qtd_por_pedido: parseInt(document.getElementById('qtd_por_pedido').value) }); alert("Regras atualizadas!"); };
+        
+        onValue(ref(db, 'jogo/config'), (snap) => { 
+            const c = snap.val(); if(!c) return; 
+            document.getElementById('texto_premio').value = c.texto_premio || ""; 
+            document.getElementById('url_imagem').value = c.url_imagem || ""; 
+            document.getElementById('max_cartelas').value = c.max_cartelas || 4; 
+            document.getElementById('qtd_por_pedido').value = c.qtd_por_pedido || 4; 
+            document.getElementById('select-rodada').value = c.rodada_ativa || 1; 
+        });
+        
+        async function sortearBola() { if(ganhadorNoBanco) return; const snap = await get(ref(db, 'jogo/bolas_sorteadas')); let list = snap.val() || []; if(list.length >= 90) return; let n; do { n = Math.floor(Math.random() * 90) + 1; } while(list.includes(n)); list.push(n); await set(ref(db, 'jogo/bolas_sorteadas'), list); }
+        
+        document.getElementById('btn-auto').onclick = () => { if(intervaloAuto) { clearInterval(intervaloAuto); intervaloAuto = null; document.getElementById('btn-auto').innerText = "▶ INICIAR RODADA AUTOMÁTICA"; document.getElementById('status-auto').style.display = "none"; } else { if(ganhadorNoBanco) return alert("Limpe o ganhador!"); intervaloAuto = setInterval(sortearBola, 5000); document.getElementById('btn-auto').innerText = "⏹ PARAR AUTOMÁTICO"; document.getElementById('status-auto').style.display = "block"; } };
+        
+        onValue(ref(db, 'jogo/ganhador_atual'), (snap) => { 
+            ganhadorNoBanco = snap.val(); 
+            document.getElementById('winner-alert').style.display = ganhadorNoBanco ? 'block' : 'none'; 
+            document.getElementById('winner-display').innerText = ganhadorNoBanco || ""; 
+            if(ganhadorNoBanco && intervaloAuto) { clearInterval(intervaloAuto); intervaloAuto = null; document.getElementById('btn-auto').innerText = "▶ INICIAR RODADA AUTOMÁTICA"; document.getElementById('status-auto').style.display = "none"; } 
+        });
+        
+        document.getElementById('btn-clear-winner').onclick = () => set(ref(db, 'jogo/ganhador_atual'), null);
+        document.getElementById('btn-draw').onclick = () => sortearBola();
+        document.getElementById('btn-reset-bolas').onclick = () => { if(confirm("Limpar bolas?")) set(ref(db, 'jogo/bolas_sorteadas'), []); };
+        document.getElementById('btn-reset-chat').onclick = () => { if(confirm("Limpar chat?")) set(ref(db, 'chat'), {}); };
+        document.getElementById('btn-clear').onclick = async () => { if(confirm("Zerar cartelas?")) { const users = await get(ref(db, 'users')); if(users.exists()) { const updates = {}; users.forEach(u => { updates[`users/${u.key}/cartelas`] = null; }); await update(ref(db, '/'), updates); await set(ref(db, 'jogo/ganhador_atual'), null); } } };
+        
+        document.getElementById('btn-release').onclick = async () => { const snap = await get(ref(db, 'jogo/config/pode_pedir')); set(ref(db, 'jogo/config/pode_pedir'), !snap.val()); };
+        onValue(ref(db, 'jogo/config/pode_pedir'), (snap) => { const p = snap.val(); const b = document.getElementById('btn-release'); b.innerText = p ? "PEDIDOS: LIBERADOS (ON)" : "PEDIDOS: BLOQUEADOS (OFF)"; b.style.background = p ? "#27ae60" : "#c0392b"; });
+        
+        document.getElementById('btn-lock-logout').onclick = async () => { const snap = await get(ref(db, 'jogo/config/pode_deslogar')); set(ref(db, 'jogo/config/pode_deslogar'), !snap.val()); };
+        onValue(ref(db, 'jogo/config/pode_deslogar'), (snap) => { const p = snap.val(); const b = document.getElementById('btn-lock-logout'); b.innerText = p ? "SAÍDA: VISÍVEL" : "SAÍDA: ESCONDIDA"; b.style.background = p ? "#27ae60" : "#8e44ad"; });
+    </script>
+</body>
+</html>
